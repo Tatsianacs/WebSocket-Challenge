@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='UTF-8'>
+  <title>WebSocket Challenge</title>
+</head>
+<body>
+<h2>WebSocket Test</h2>
+<div id='output'></div>
+<script>
+  let wsUri = 'ws://wsc.2123.io/';
+  let output;
+  let ws;
+  let token;
+  let bits;
+
+  function init() {
+    output = document.getElementById('output');
+    testWebSocket();
+  }
+
+  function testWebSocket() {
+    ws = new WebSocket(wsUri);
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = function (evt) {
+      onOpen(evt)
+    };
+    ws.onmessage = function (evt) {
+      onMessage(evt)
+    };
+  }
+
+  function onMessage(evt) {
+    console.log('ON MESSAGE received - event data is ' + evt.data);
+    if (evt.data instanceof ArrayBuffer) {
+      console.log('ArrayBuffer');
+      let buffer = evt.data;
+      var arr;
+      if (bits === 8) {
+        arr = new Uint8Array(buffer);
+      } else if (bits === 16) {
+        arr = new Uint16Array(buffer);
+      }
+      let sum = arr.reduce((val1, val2) => val1 + val2);
+      send({"token": token, "command": "binary_arithmetic", "answer": sum});
+    } else {
+
+      let parsedData = JSON.parse(evt.data);
+      console.log('tanua', parsedData.token);
+      if (parsedData.token) {
+        token = parsedData.token;
+      }
+      if (parsedData.message) {
+        console.log('we have a message here ');
+        let msg = parsedData.message;
+        switch (msg) {
+          case 'You successfully accept challenge':
+            console.log('You successfully accept challenge');
+
+            console.log(token + ' token');
+            let nextTaskName = parsedData.next;
+            console.log(nextTaskName);
+            let dataToBeSent = {'token': token, 'command': nextTaskName};
+            send(dataToBeSent);
+            break;
+          default:
+            let nextTaskRequest = parsedData.next;
+            send({'token': token, 'command': nextTaskRequest});
+        }
+      } else {
+        let taskName = parsedData.name;
+        switch (taskName) {
+          case 'arithmetic':
+            let taskSign = parsedData.task.sign;
+            let newArr = Array.from(parsedData.task.values);
+            console.log('taskSign ' + taskSign + newArr.join());
+            let result;
+            switch (taskSign) {
+              case '-' :
+                result = newArr[0] - newArr[1] - newArr[2] - newArr[3];
+                break;
+              case '+':
+                result = newArr[0] + newArr[1] + newArr[2] + newArr[3];
+                break;
+              case '*':
+                result = newArr[0] * newArr[1] * newArr[2] * newArr[3];
+                break;
+            }
+            console.log('result is ' + result);
+            console.log(token + 'token');
+            send({'token': token, 'command': 'arithmetic', 'answer': result});
+            break;
+          case 'function_evaluation':
+            let functionToExecute = parsedData.task.fn;
+            let resultForEval = eval(functionToExecute);
+            console.log('resultForEval' + resultForEval);
+            send({'token': token, 'command': 'function_evaluation', 'answer': resultForEval()});
+            break;
+          case 'binary_arithmetic':
+            bits = parsedData.task.bits;
+            break;
+        }
+      }
+    }
+  }
+
+  function onOpen(evt) {
+    console.log('WebSocket is going to be opened  ');
+    let msg = {'name': 'test', 'command': 'challenge accepted'};
+    send(msg);
+  }
+
+  function send(msg) {
+    console.log('message will be sent SEND METHOD' + msg);
+    ws.send(JSON.stringify(msg));
+  }
+
+  window.addEventListener('load', init, false);
+</script>
+</body>
+</html>
