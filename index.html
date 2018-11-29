@@ -6,16 +6,13 @@
 </head>
 <body>
 <h2>WebSocket Test</h2>
-<div id='output'></div>
 <script>
   let wsUri = 'ws://wsc.2123.io/';
-  let output;
   let ws;
   let token;
   let bits;
 
   function init() {
-    output = document.getElementById('output');
     testWebSocket();
   }
 
